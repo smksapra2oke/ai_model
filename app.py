@@ -63,11 +63,12 @@ def transform_row(data):
 
 
 # ===============================
-# ANALISIS PERSONAL (RULE BASED)
+# ANALISIS PERSONAL (VERSI LEBIH PANJANG & PROFESIONAL)
 # ===============================
 def generate_analysis(data, probability, pred_label):
     strengths = []
     risks = []
+    recommendations = []
 
     nilai_ujikom = float(data.get("nilai_ujikom", 0))
     nilai_kejuruan = float(data.get("nilai_kejuruan", 0))
@@ -76,48 +77,60 @@ def generate_analysis(data, probability, pred_label):
     pendapatan = float(data.get("pendapatan", 0))
 
     # ===== NILAI =====
-    if nilai_ujikom >= 80:
-        strengths.append("Kompetensi teknis sangat baik")
+    if nilai_ujikom >= 85:
+        strengths.append("Kompetensi teknis sangat baik, menunjukkan kesiapan untuk menangani tugas profesional kompleks.")
     elif nilai_ujikom >= 70:
-        strengths.append("Kompetensi teknis cukup baik")
+        strengths.append("Kompetensi teknis cukup baik, namun ada ruang untuk pengembangan lebih lanjut.")
     else:
-        risks.append("Kompetensi teknis perlu ditingkatkan")
+        risks.append("Kompetensi teknis perlu ditingkatkan agar mampu bersaing di lingkungan kerja yang dinamis.")
+        recommendations.append("Ikuti pelatihan tambahan atau sertifikasi untuk memperkuat kemampuan teknis.")
 
-    if nilai_kejuruan >= 80:
-        strengths.append("Penguasaan keterampilan kejuruan kuat")
+    if nilai_kejuruan >= 85:
+        strengths.append("Penguasaan keterampilan kejuruan kuat, mampu beradaptasi dengan kebutuhan industri.")
+    elif nilai_kejuruan >= 70:
+        strengths.append("Penguasaan keterampilan kejuruan memadai, namun masih dapat ditingkatkan untuk efektivitas kerja.")
     else:
-        risks.append("Penguasaan keterampilan kejuruan belum optimal")
+        risks.append("Penguasaan keterampilan kejuruan belum optimal.")
+        recommendations.append("Lakukan praktik lebih sering atau ikut kursus lanjutan sesuai bidang pekerjaan.")
 
     # ===== PKL =====
     if pkl in [1, "1", "Ya", "ya"]:
-        strengths.append("Pengalaman PKL relevan dengan bidang kerja")
+        strengths.append("Pengalaman PKL relevan dengan bidang kerja, memberikan pemahaman nyata tentang praktik industri.")
     else:
-        risks.append("Pengalaman PKL kurang relevan")
+        risks.append("Pengalaman PKL kurang relevan.")
+        recommendations.append("Pertimbangkan magang atau proyek kerja lapangan di bidang yang sesuai untuk memperkuat pengalaman praktis.")
 
     # ===== EKSKUL =====
     if ekskul in [1, "1", "Ya", "ya"]:
-        strengths.append("Soft skill dan pengalaman organisasi baik")
+        strengths.append("Aktivitas ekstrakurikuler menunjukkan kemampuan leadership, teamwork, dan soft skill yang baik.")
+    else:
+        recommendations.append("Mengikuti kegiatan organisasi atau komunitas dapat meningkatkan keterampilan interpersonal.")
 
     # ===== PENDAPATAN =====
     if pendapatan < 2000000:
-        risks.append("Pendapatan masih di bawah rata-rata awal karier")
+        risks.append("Pendapatan masih di bawah rata-rata awal karier, menandakan potensi pengembangan karier yang perlu difokuskan.")
+        recommendations.append("Pertimbangkan pelatihan keterampilan tambahan atau strategi pengembangan karier untuk meningkatkan pendapatan.")
 
     # ===== SCORE =====
     max_prob = max(probability.values()) if probability else 0
     score = round(max_prob * 100)
 
-    # ===== SUMMARY =====
+    # ===== SUMMARY LEBIH PANJANG =====
     summary = (
-        f"Berdasarkan analisis model AI, profil alumni berada pada kategori "
-        f"{pred_label} dengan tingkat keyakinan {score}%. "
-        f"Hasil ini mencerminkan kombinasi antara kompetensi akademik, "
-        f"keterampilan praktis, dan kesiapan kerja."
+        f"Berdasarkan analisis model AI, profil alumni berada pada kategori '{pred_label}' "
+        f"dengan tingkat keyakinan {score}%. Hasil ini mencerminkan kombinasi antara "
+        f"kompetensi akademik, keterampilan praktis, pengalaman lapangan, dan kesiapan kerja.\n\n"
+        f"**Kekuatan utama:** {', '.join(strengths) if strengths else 'Belum ada kekuatan menonjol terdeteksi.'}\n\n"
+        f"**Area yang perlu perhatian:** {', '.join(risks) if risks else 'Tidak ada area risiko signifikan terdeteksi.'}\n\n"
+        f"**Rekomendasi pengembangan:** {', '.join(recommendations) if recommendations else 'Lanjutkan pengembangan sesuai bidang saat ini.'}\n\n"
+        f"Analisis ini dapat digunakan sebagai panduan untuk pengembangan karier lebih lanjut dan strategi peningkatan kompetensi profesional."
     )
 
     return {
         "score": score,
         "strengths": strengths,
         "risks": risks,
+        "recommendations": recommendations,
         "summary": summary
     }
 
