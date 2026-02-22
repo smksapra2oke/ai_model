@@ -44,26 +44,82 @@ def transform_row(data):
     for f in features:
         value = data.get(f)
 
-        # Jika field kosong → default 0
         if value is None or value == "":
             row.append(0)
             continue
 
-        # Jika ada encoder
         if f in encoders:
             try:
-                # Jika label ada di classes
                 if value in encoders[f].classes_:
                     value = encoders[f].transform([value])[0]
                 else:
-                    # Label baru → pakai 0 sebagai fallback
                     value = 0
-            except Exception:
+            except:
                 value = 0
 
         row.append(value)
 
     return row
+
+
+# ===============================
+# ANALISIS PERSONAL (RULE BASED)
+# ===============================
+def generate_analysis(data, probability, pred_label):
+    strengths = []
+    risks = []
+
+    nilai_ujikom = float(data.get("nilai_ujikom", 0))
+    nilai_kejuruan = float(data.get("nilai_kejuruan", 0))
+    pkl = data.get("tempat_pkl_relevan")
+    ekskul = data.get("ekskul_aktif")
+    pendapatan = float(data.get("pendapatan", 0))
+
+    # ===== NILAI =====
+    if nilai_ujikom >= 80:
+        strengths.append("Kompetensi teknis sangat baik")
+    elif nilai_ujikom >= 70:
+        strengths.append("Kompetensi teknis cukup baik")
+    else:
+        risks.append("Kompetensi teknis perlu ditingkatkan")
+
+    if nilai_kejuruan >= 80:
+        strengths.append("Penguasaan keterampilan kejuruan kuat")
+    else:
+        risks.append("Penguasaan keterampilan kejuruan belum optimal")
+
+    # ===== PKL =====
+    if pkl in [1, "1", "Ya", "ya"]:
+        strengths.append("Pengalaman PKL relevan dengan bidang kerja")
+    else:
+        risks.append("Pengalaman PKL kurang relevan")
+
+    # ===== EKSKUL =====
+    if ekskul in [1, "1", "Ya", "ya"]:
+        strengths.append("Soft skill dan pengalaman organisasi baik")
+
+    # ===== PENDAPATAN =====
+    if pendapatan < 2000000:
+        risks.append("Pendapatan masih di bawah rata-rata awal karier")
+
+    # ===== SCORE =====
+    max_prob = max(probability.values()) if probability else 0
+    score = round(max_prob * 100)
+
+    # ===== SUMMARY =====
+    summary = (
+        f"Berdasarkan analisis model AI, profil alumni berada pada kategori "
+        f"{pred_label} dengan tingkat keyakinan {score}%. "
+        f"Hasil ini mencerminkan kombinasi antara kompetensi akademik, "
+        f"keterampilan praktis, dan kesiapan kerja."
+    )
+
+    return {
+        "score": score,
+        "strengths": strengths,
+        "risks": risks,
+        "summary": summary
+    }
 
 
 # ===============================
@@ -86,9 +142,13 @@ def predict():
         for label, prob in zip(class_labels, probs):
             probability[label.lower().replace(" ", "_")] = float(prob)
 
+        # 🔎 ANALISIS PERSONAL
+        analysis = generate_analysis(data, probability, pred_label)
+
         return jsonify({
             "prediction": pred_label,
-            "probability": probability
+            "probability": probability,
+            "analysis": analysis
         })
 
     except Exception as e:
@@ -98,7 +158,7 @@ def predict():
 
 
 # ===============================
-# BATCH PREDICT (SUPER CEPAT)
+# BATCH PREDICT
 # ===============================
 @app.route("/predict_batch", methods=["POST"])
 def predict_batch():
@@ -108,11 +168,9 @@ def predict_batch():
         if not isinstance(data_list, list):
             return jsonify({"error": "Input harus berupa list"}), 400
 
-        # Transform semua data
         rows = [transform_row(d) for d in data_list]
         rows = np.array(rows)
 
-        # Predict sekaligus
         preds = model.predict(rows)
         probs_all = model.predict_proba(rows)
 
@@ -122,16 +180,19 @@ def predict_batch():
 
         results = []
 
-        for pred_index, probs in zip(preds, probs_all):
+        for data, pred_index, probs in zip(data_list, preds, probs_all):
             pred_label = target_encoder.inverse_transform([pred_index])[0]
 
             probability = {}
             for label, prob in zip(class_labels, probs):
                 probability[label.lower().replace(" ", "_")] = float(prob)
 
+            analysis = generate_analysis(data, probability, pred_label)
+
             results.append({
                 "prediction": pred_label,
-                "probability": probability
+                "probability": probability,
+                "analysis": analysis
             })
 
         return jsonify(results)
